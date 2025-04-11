@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { 
+            margin: 0;
+            background: white;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+        .node text {
+            font: 8px Arial;
+            fill: black;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+        .node circle {
+            fill: black;
+        }
+        .link {
+            fill: none;
+            stroke: #999;
+            stroke-opacity: 0.4;
+            stroke-width: 0.5;
+        }
+        .path-highlight {
+            stroke: #4CAF50;
+            stroke-opacity: 1;
+            stroke-width: 1.5;
+        }
+        .node-highlight circle {
+            fill: #4CAF50;
+        }
+        .node-highlight text {
+            fill: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+<script>
+const treeData = {
+    "name": "Content",
+    "children": [{
+        "name": "Entertainment",
+        "children": [{
+            "name": "Movies & TV",
+            "children": [{
+                "name": "Film Reviews",
+                "children": [{
+                    "name": "Blockbuster Critiques",
+                    "children": [{
+                        "name": "Reviews",
+                        "children": [{
+                            "name": "Action Movie Review Article"
+                        }]
+                    }]
+                }]
+            }]
+        }]
+    }]
+};
+
+const width = window.innerWidth;
+const height = window.innerHeight;
+const radius = Math.min(width, height) / 3;
+
+const tree = d3.tree()
+    .size([2 * Math.PI, radius * 0.9])
+    .separation((a, b) => (a.parent == b.parent ? 1.5 : 2) / a.depth);
+
+const svg = d3.select("body").append("svg")
+    .attr("viewBox", [-width/2, -height/2, width, height]);
+
+const g = svg.append("g");
+
+function highlightPathToRoot(node) {
+    d3.selectAll(".link").classed("path-highlight", false);
+    d3.selectAll(".node").classed("node-highlight", false);
+
+    let current = node;
+    while (current.parent) {
+        d3.select(current.nodeElement).classed("node-highlight", true);
+        d3.selectAll(".link")
+            .filter(d => d.source === current.parent && d.target === current)
+            .classed("path-highlight", true);
+        current = current.parent;
+    }
+    d3.select(current.nodeElement).classed("node-highlight", true);
+}
+
+const root = tree(d3.hierarchy(treeData));
+
+const links = g.append("g")
+    .selectAll("path")
+    .data(root.links())
+    .join("path")
+    .attr("class", "link")
+    .attr("d", d3.linkRadial()
+        .angle(d => d.x)
+        .radius(d => d.y));
+
+const nodes = g.append("g")
+    .selectAll("g")
+    .data(root.descendants())
+    .join("g")
+    .attr("class", "node")
+    .attr("transform", d => `
+        rotate(${d.x * 180 / Math.PI - 90})
+        translate(${d.y},0)
+    `);
+
+nodes.each(function(d) {
+    d.nodeElement = this;
+});
+
+nodes.append("circle")
+    .attr("r", 1);
+
+nodes.append("text")
+    .attr("dy", "0.31em")
+    .attr("x", d => d.x < Math.PI === !d.children ? 6 : -6)
+    .attr("text-anchor", d => d.x < Math.PI === !d.children ? "start" : "end")
+    .attr("transform", d => d.x >= Math.PI ? "rotate(180)" : null)
+    .text(d => d.data.name)
+    .on("mouseover", (event, d) => highlightPathToRoot(d))
+    .on("mouseout", () => {
+        d3.selectAll(".link").classed("path-highlight", false);
+        d3.selectAll(".node").classed("node-highlight", false);
+    });
+
+g.attr("transform", `translate(0,${height/4})`);
+</script>
+</body>
+</html>
